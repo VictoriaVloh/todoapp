@@ -3,11 +3,9 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('mypublic'));
 app.use(express.json())
-const todos = []
 const path = require('path');
 const { mongoClient } = require("./db");
 const { ObjectId } = require("mongodb");
-const { rejects } = require('assert');
 
 app.use('/file', express.static(path.join(__dirname, 'public')))
 // 1) entity shape ?
@@ -17,29 +15,31 @@ app.use('/file', express.static(path.join(__dirname, 'public')))
 app.get("/", async (req, res) => {
     const mongoconn = await mongoClient.connect();
     const mytasks = await mongoconn.db('mydatabase').collection('mytasks').find().toArray();
-
+    res.json(mytasks)
 })
 
 app.post("/", async (req, res) => {
     const todo = {
         title: req.body.title,
-        id: todos.length + 1
+        isCompleted: false
     }
     const mongoconn = await mongoClient.connect();
     mongoconn.db('mydatabase').collection('mytasks').insertOne(todo);
     res.json(todo);
 })
 
-app.put("/finishtask", (req, res) => {
-    const promise = new Promise((resolve, rejects) => {
-        async function ClickOnFinishedTask() {
-            resolve();
-        }
-    })
-    promise.then(() => {
-    res.json("Task is finished");
-    })
+app.put("/finishtask/:id", async (req, res) => {
+    // mark task as completed
+    let id = req.params.id;
+    const mongoconn = await mongoClient.connect();
+    mongoconn.db('mydatabase').collection('mytasks').updateOne({ _id: new ObjectId(id) }, { $set: { isCompleted: true } });
+    mongoconn.db('mydatabase').collection('mytasks').updateOne({ _id: new ObjectId(id) }, { $set: { title: "changed title" } });
+
+    res.json("task finished");
+    //finish task
 })
+
+// allow update title
 
 app.delete("/:id", async (req, res) => {
     let id = req.params.id;
